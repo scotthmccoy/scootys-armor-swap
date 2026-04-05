@@ -83,3 +83,10 @@ Version: 2.1
     -- Updated to work with Space Age
 
 --------------------------------------------------------------------------------------------------- 
+
+Version: 2.1.1
+
+  Bug Fixes:
+    -- Increased temporary inventory slot buffer during armor swap to prevent items from dropping in edge cases.
+
+---------------------------------------------------------------------------------------------------

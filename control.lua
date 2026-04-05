@@ -316,7 +316,7 @@ function equipArmorWithItemNumber(luaPlayer, armorItemNumber)
 	--Switch armors
 	--Normally, swapping armor briefly removes inventory bonus slots which can cause the player
 	--to drop items on the ground. Briefly expand the inventory to prevent this.
-	luaPlayer.character_inventory_slots_bonus = luaPlayer.character_inventory_slots_bonus + 1000
+	luaPlayer.character_inventory_slots_bonus = luaPlayer.character_inventory_slots_bonus + 60000
 
 	
 	if not luaItemStackWornArmor.swap_stack(putWornArmorHere) then
@@ -330,7 +330,7 @@ function equipArmorWithItemNumber(luaPlayer, armorItemNumber)
 	end
 
 	-- Reset character_inventory_slots_bonus 
-	luaPlayer.character_inventory_slots_bonus = luaPlayer.character_inventory_slots_bonus - 1000  		
+	luaPlayer.character_inventory_slots_bonus = luaPlayer.character_inventory_slots_bonus - 60000  		
 
 end
 
