@@ -90,3 +90,12 @@ Version: 2.1.1
     -- Increased temporary inventory slot buffer during armor swap to prevent items from dropping in edge cases.
 
 ---------------------------------------------------------------------------------------------------
+Version: 2.2.0
+
+  Features:
+    -- Updated to work with Factorio 2.1.
+
+  Bug Fixes:
+    -- Fixed the Jetpack tint update for the 2.1 rendering API, which removed the global rendering.set_color function in favor of LuaRenderObject.color.
+
+---------------------------------------------------------------------------------------------------

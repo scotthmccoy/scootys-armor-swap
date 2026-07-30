@@ -374,7 +374,16 @@ function jetpackTintFix(luaPlayer)
 
 			local jetpack = remote.call("jetpack", "get_jetpack_for_character", {character=luaPlayer.character})
 			if jetpack ~= nil then
-				rendering.set_color(jetpack.animation_mask, jetpack.character.player and jetpack.character.player.color or jetpack.character.color)
+				-- As of Factorio 2.1 the global rendering.set_color(id, color) was removed.
+				-- Colors are now set via LuaRenderObject.color. animation_mask may be a
+				-- render object id (number) or already a LuaRenderObject, so handle both.
+				local animationMask = jetpack.animation_mask
+				if type(animationMask) == "number" then
+					animationMask = rendering.get_object_by_id(animationMask)
+				end
+				if animationMask ~= nil and animationMask.valid then
+					animationMask.color = jetpack.character.player and jetpack.character.player.color or jetpack.character.color
+				end
 			end
 		end, 
 		luaPlayer
