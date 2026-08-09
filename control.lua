@@ -305,32 +305,20 @@ function equipArmorWithItemNumber(luaPlayer, armorItemNumber)
 	end
 
 
-	local putWornArmorHere = mainInventory.find_empty_stack(luaItemStackWornArmor.name)
-
-	-- Bail if full
-	if putWornArmorHere == nil then
-		Logging.sasLog("Nowhere to put worn armor")
-		return
-	end	
-
 	--Switch armors
+	--Swapping the worn armor stack directly with the new armor stack requires no empty
+	--inventory slot, so this works even when the main inventory is full.
 	--Normally, swapping armor briefly removes inventory bonus slots which can cause the player
-	--to drop items on the ground. Briefly expand the inventory to prevent this.
+	--to drop items on the ground. Briefly expand the inventory to prevent this, and always
+	--restore it afterwards even if the swap fails.
 	luaPlayer.character_inventory_slots_bonus = luaPlayer.character_inventory_slots_bonus + 60000
 
-	
-	if not luaItemStackWornArmor.swap_stack(putWornArmorHere) then
-		Logging.sasLog("Taking off armor failed")
-		return
+	if not luaItemStackWornArmor.swap_stack(luaItemStackNewArmor) then
+		Logging.sasLog("Swapping armor failed")
 	end
 
-	if not luaItemStackNewArmor.swap_stack(luaItemStackWornArmor) then
-		Logging.sasLog("Putting on new armor failed")
-		return
-	end
-
-	-- Reset character_inventory_slots_bonus 
-	luaPlayer.character_inventory_slots_bonus = luaPlayer.character_inventory_slots_bonus - 60000  		
+	-- Reset character_inventory_slots_bonus
+	luaPlayer.character_inventory_slots_bonus = luaPlayer.character_inventory_slots_bonus - 60000
 
 end
 

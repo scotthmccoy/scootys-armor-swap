@@ -99,3 +99,10 @@ Version: 2.2.0
     -- Fixed the Jetpack tint update for the 2.1 rendering API, which removed the global rendering.set_color function in favor of LuaRenderObject.color.
 
 ---------------------------------------------------------------------------------------------------
+Version: 2.2.1
+
+  Bug Fixes:
+    -- Fixed armor swapping silently failing when the main inventory was full. Armors are now swapped directly, which no longer requires a free inventory slot.
+    -- Fixed the temporary inventory slot bonus leaking permanently if an armor swap failed midway.
+
+---------------------------------------------------------------------------------------------------
