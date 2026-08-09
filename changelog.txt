@@ -106,3 +106,9 @@ Version: 2.2.1
     -- Fixed the temporary inventory slot bonus leaking permanently if an armor swap failed midway.
 
 ---------------------------------------------------------------------------------------------------
+Version: 2.3.0
+
+  Features:
+    -- Added the /sas-clear-colors console command as an alternative to the Control + \ keybinding for clearing the color cache.
+
+---------------------------------------------------------------------------------------------------

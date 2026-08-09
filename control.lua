@@ -80,6 +80,22 @@ function onKeyPressHandlerClearCacheHandler(event)
 	)
 end
 
+-- Handles the /sas-clear-colors console command. Unlike the keybinding, this may be
+-- run from the server console (no player_index) so we guard against a nil player.
+function onClearCacheCommand(command)
+	tryCatchPrint(
+		function()
+			Logging.sasLog("⚡️ onClearCacheCommand")
+			storage.armorColors = {}
+			local luaPlayer = command.player_index and game.get_player(command.player_index)
+			if luaPlayer then
+				Logging.pLog(luaPlayer, "All Armors have been un-dyed")
+			end
+		end,
+		command
+	)
+end
+
 function onPlayerArmorInventoryChangedHandler(event)
 	tryCatchPrint(
 		function()
@@ -407,6 +423,14 @@ Event.addListener("on_load", on_load, true)
 Event.addListener("scootys-armor-swap-equip-next-armor", onKeyPressHandlerEquipNextArmorHandler)
 Event.addListener("scootys-armor-swap-clear-cache", onKeyPressHandlerClearCacheHandler)
 Event.addListener(defines.events.on_player_armor_inventory_changed, onPlayerArmorInventoryChangedHandler)
+
+-- Console command alternative to the "clear cache" keybinding. Registered at control-stage
+-- load (commands are not persisted in the save, so this must run on every load).
+commands.add_command(
+	"sas-clear-colors",
+	"Clears Scooty's Armor Swap color cache (un-dyes all armors).",
+	onClearCacheCommand
+)
 
 
 
