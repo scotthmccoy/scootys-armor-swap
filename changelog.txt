@@ -118,3 +118,9 @@ Version: 2.4.0
     -- When the mod is loaded into a save, every player's undyed armors (worn and in the main inventory) are now dyed to that player's current color.
 
 ---------------------------------------------------------------------------------------------------
+Version: 2.5.0
+
+  Features:
+    -- Equipping an armor now either adopts its saved color (if it has one) or dyes it to your current color (if it doesn't), never both. Added a re-entrancy guard so this can never loop.
+
+---------------------------------------------------------------------------------------------------

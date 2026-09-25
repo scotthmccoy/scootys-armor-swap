@@ -112,7 +112,20 @@ function onClearCacheCommand(command)
 	)
 end
 
+-- Re-entrancy guard for the armor-changed handler. This handler both reads and writes the
+-- player color and the color cache, so we make sure it can never re-enter itself (which could
+-- otherwise ping-pong the color between the player and the armor). A plain Lua flag is fine
+-- here: it is set and cleared within a single synchronous event, never persists across ticks,
+-- and every game instance runs the handler identically, so it can't cause a desync.
+handlingArmorChange = false
+
 function onPlayerArmorInventoryChangedHandler(event)
+	if handlingArmorChange then
+		Logging.sasLog("⚡️ onPlayerArmorInventoryChangedHandler re-entered, ignoring")
+		return
+	end
+	handlingArmorChange = true
+
 	tryCatchPrint(
 		function()
 			Logging.sasLog("⚡️ onPlayerArmorInventoryChangedHandler")
@@ -122,17 +135,18 @@ function onPlayerArmorInventoryChangedHandler(event)
 				return
 			end
 
-			-- Change the player's color based on the new armor
-			dyePlayerFromArmor(luaPlayer)
-
-			-- Record the current armor's color for the next time it is equipped
-			-- Note: this is to update the fuzzy match, since at the time of this writing
-			-- it is suddenly obvious that that the fuzzy match is the one that is used most 
-			-- frequently due to jetpack creating new item IDs.
-			dyeArmorFromPlayer(luaPlayer)
-		end, 
+			-- Either/or, never both, so the player color and the armor color can't fight:
+			-- - If the equipped armor already has a saved color, adopt it as the player color.
+			-- - Otherwise the armor is uncolored, so dye it to the player's current color.
+			if not dyePlayerFromArmor(luaPlayer) then
+				dyeArmorFromPlayer(luaPlayer)
+			end
+		end,
 		event
 	)
+
+	-- Always clear the guard, even if the body above errored (tryCatchPrint swallows errors).
+	handlingArmorChange = false
 end
 
 ----------------------
@@ -169,13 +183,15 @@ function dyeArmorFromPlayer(luaPlayer)
 	end
 end
 
+-- Applies the worn armor's saved color to the player. Returns true if a saved color was
+-- found and applied, false otherwise (no armor worn, or the armor is uncolored).
 function dyePlayerFromArmor(luaPlayer)
 	Logging.sasLog()
 
 	-- Get the currently worn armor
 	local armorInfo = getArmorInfo(luaPlayer)
 	if armorInfo == nil then
-		return
+		return false
 	end
 
 
@@ -191,11 +207,12 @@ function dyePlayerFromArmor(luaPlayer)
 			-- Apply Jetpack tint fix
 			tryCatchPrint(jetpackTintFix, luaPlayer)
 
-			return
+			return true
 		end
 	end
 
 	Logging.sasLog("Could not find armor's color, Bailing.")
+	return false
 end
 
 -- Returns true if any of the armor's keys already has a recorded color.
