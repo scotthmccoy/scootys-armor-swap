@@ -124,3 +124,9 @@ Version: 2.5.0
     -- Equipping an armor now either adopts its saved color (if it has one) or dyes it to your current color (if it doesn't), never both. Added a re-entrancy guard so this can never loop.
 
 ---------------------------------------------------------------------------------------------------
+Version: 2.5.1
+
+  Bug Fixes:
+    -- Restored re-recording an armor's color on every equip (removed in 2.5.0). This refreshes the exact item_number key so armors with stable, distinct identities keep distinct colors and the key is rebuilt after mods like Jetpack recreate the armor. The re-entrancy guard still prevents any loop.
+
+---------------------------------------------------------------------------------------------------

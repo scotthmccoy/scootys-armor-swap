@@ -135,12 +135,19 @@ function onPlayerArmorInventoryChangedHandler(event)
 				return
 			end
 
-			-- Either/or, never both, so the player color and the armor color can't fight:
-			-- - If the equipped armor already has a saved color, adopt it as the player color.
-			-- - Otherwise the armor is uncolored, so dye it to the player's current color.
-			if not dyePlayerFromArmor(luaPlayer) then
-				dyeArmorFromPlayer(luaPlayer)
-			end
+			-- If the equipped armor already has a saved color, adopt it as the player color.
+			-- Otherwise the armor is uncolored, so it keeps the player's current color.
+			dyePlayerFromArmor(luaPlayer)
+
+			-- Re-record the color under all of the armor's keys. For an uncolored armor this
+			-- dyes it to the player's current color. For an already-colored armor this writes
+			-- back the same color we just adopted, which "promotes" a fuzzy match to an exact
+			-- one by refreshing key1 (the item_number) for this specific instance -- so armors
+			-- with stable, distinct identities keep distinct colors, and key1 is rebuilt after
+			-- a mod like Jetpack recreates the armor with a new item_number.
+			-- This is safe from the loop the re-entrancy guard protects against: it writes back
+			-- the same value it read and raises no event, so it can never ping-pong.
+			dyeArmorFromPlayer(luaPlayer)
 		end,
 		event
 	)
