@@ -130,3 +130,10 @@ Version: 2.5.1
     -- Restored re-recording an armor's color on every equip (removed in 2.5.0). This refreshes the exact item_number key so armors with stable, distinct identities keep distinct colors and the key is rebuilt after mods like Jetpack recreate the armor. The re-entrancy guard still prevents any loop.
 
 ---------------------------------------------------------------------------------------------------
+Version: 2.6.0
+
+  Changes:
+    -- Reworked how armors are identified for color matching. Armor keys are now namespaced, human-readable strings built from the armor's name, quality, and a sorted list of its equipment, instead of numeric hashes. This removes a class of bugs where two different armors could be mapped to the same color by a hash collision, and where an item number could collide with a hash. Quality is now part of an armor's identity, so armors that differ only in quality can hold different colors.
+    -- The color cache is reset once when updating to this version, since the old keys are no longer compatible. Undyed armors are re-seeded to your current color on load, so armors keep sensible colors after the update.
+
+---------------------------------------------------------------------------------------------------

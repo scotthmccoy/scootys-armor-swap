@@ -1,23 +1,5 @@
 StringUtils = {}
 
--- Gets a numerical hash of a string
-local b = bit32 or try(require, 'bit') or error("No bitop lib found")
-function StringUtils.hash(o)
-  local t = type(o)
-  if t ~= 'string' then
-    return nil
-  end
-
-  local len = #o
-  local h = len
-  local step = b.rshift(len, 5) + 1
-
-  for i=len, step, -step do
-    h = b.bxor(h, b.lshift(h, 5) + b.rshift(h, 2) + string.byte(o, i))
-  end
-  return h
-end
-
 -- Converts anything to a string
 function StringUtils.toString(val)
   if not val then

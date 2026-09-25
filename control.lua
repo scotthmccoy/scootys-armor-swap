@@ -4,6 +4,10 @@ require('stringutils')
 require('logging')
 Logging.sasLog("Scooty's Armor Swap Setup")
 
+-- Bumped whenever the storage.armorColors key format changes. On a mismatch the cache is
+-- reset once (see on_configuration_changed) so stale keys from an older format don't linger.
+COLOR_KEY_VERSION = 2
+
 
 -----------------------------
 -- Event Handlers
@@ -20,6 +24,7 @@ function on_init(event)
 		function()
 			Logging.sasLog("⚡️ on_init")
 			storage.armorColors = {}
+			storage.colorKeyVersion = COLOR_KEY_VERSION
 			dyeAllPlayersUndyedArmors()
 		end
 	)
@@ -35,6 +40,15 @@ function on_configuration_changed(event)
 		function()
 			Logging.sasLog("⚡️ on_configuration_changed")
 			storage.armorColors = storage.armorColors or {}
+
+			-- If the color-cache key format changed, drop stale entries once. They can never
+			-- match the new keys anyway, so keeping them would just bloat the save.
+			if storage.colorKeyVersion ~= COLOR_KEY_VERSION then
+				Logging.sasLog("Color key format changed to v" .. COLOR_KEY_VERSION .. "; resetting color cache")
+				storage.armorColors = {}
+				storage.colorKeyVersion = COLOR_KEY_VERSION
+			end
+
 			dyeAllPlayersUndyedArmors()
 		end
 	)
@@ -300,6 +314,28 @@ function getArmorInfo(luaPlayer)
 	return getArmorInfoFromStack(luaPlayer, luaItemStackWornArmor)
 end
 
+-- Builds a canonical, deterministic string describing an armor: its name, its quality, and a
+-- sorted list of its equipment grid contents (name, quality and count of each). Two armors with
+-- the same loadout produce the same signature regardless of how the equipment is arranged or the
+-- order get_contents happens to enumerate it in.
+function getArmorSignature(luaItemStackArmor)
+	local parts = {
+		luaItemStackArmor.name,
+		"q=" .. luaItemStackArmor.quality.name
+	}
+
+	if luaItemStackArmor.grid ~= nil then
+		local equipment = {}
+		for _, e in ipairs(luaItemStackArmor.grid.get_contents()) do
+			table.insert(equipment, e.name .. "@" .. e.quality .. "x" .. e.count)
+		end
+		table.sort(equipment)
+		table.insert(parts, "grid=[" .. table.concat(equipment, ",") .. "]")
+	end
+
+	return table.concat(parts, "|")
+end
+
 -- Computes the color-cache keys for a specific armor item stack. Used both for the worn
 -- armor (via getArmorInfo) and for armors sitting in the main inventory.
 function getArmorInfoFromStack(luaPlayer, luaItemStackArmor)
@@ -307,29 +343,28 @@ function getArmorInfoFromStack(luaPlayer, luaItemStackArmor)
 
 	--[[
 	Item numbers are usually a very stable way of "primary key"ing an item.
-	However, some mods that teleport players like our beloved SE and Jetpack will destroy and re-create the player, which has the
-	unfortunate side effect of creating new item numbers for that player's armors.
+	However, some mods that teleport players like our beloved SE and Jetpack will destroy and
+	re-create the player, which has the unfortunate side effect of creating new item numbers for
+	that player's armors. So we key each armor three ways, from most precise to most fuzzy, and
+	match against them in order (see dyePlayerFromArmor).
 
-	So, we do 2 more increasingly fuzzy matches on
-
+	The keys are namespaced strings rather than numeric hashes. This means:
+	- No hash collisions can silently map two different armors to the same color.
+	- The three namespaces (id / player / armor) can never collide with each other, which a
+	  single flat table of raw numbers could not guarantee.
+	Lua tables key on arbitrary-length strings directly, so there is no need to hash at all.
 	--]]
 
-	-- key1 is just the item_number - guaranteed to be unique, but not guaranteed to be permanent.
-	local key1 = luaItemStackArmor.item_number
+	local signature = getArmorSignature(luaItemStackArmor)
 
-	-- key2 is a hash of the player's name, the armor name and its grid (if it has any)
-	local hashInput = luaPlayer.name .. luaItemStackArmor.name
-	if luaItemStackArmor.grid ~= nil then
-		hashInput = hashInput .. StringUtils.toString(luaItemStackArmor.grid.get_contents())
-	end
-	local key2 = StringUtils.hash(hashInput)
+	-- key1: the exact item_number. Unique, but not permanent (recreated by teleport mods).
+	local key1 = "id:" .. luaItemStackArmor.item_number
 
-	-- key3 is a hash of the armor name and its grid (if it has any)
-	hashInput = luaItemStackArmor.name
-	if luaItemStackArmor.grid ~= nil then
-		hashInput = hashInput .. StringUtils.toString(luaItemStackArmor.grid.get_contents())
-	end
-	local key3 = StringUtils.hash(hashInput)
+	-- key2: per-player fuzzy match. Survives item_number changes; kept distinct between players.
+	local key2 = "player:" .. luaPlayer.name .. "|" .. signature
+
+	-- key3: global fuzzy match. Last resort, deliberately shared across players.
+	local key3 = "armor:" .. signature
 
 	-- Return a table
 	local ret = {
