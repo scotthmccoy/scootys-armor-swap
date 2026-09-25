@@ -112,3 +112,9 @@ Version: 2.3.0
     -- Added the /sas-clear-colors console command as an alternative to the Control + \ keybinding for clearing the color cache.
 
 ---------------------------------------------------------------------------------------------------
+Version: 2.4.0
+
+  Features:
+    -- When the mod is loaded into a save, every player's undyed armors (worn and in the main inventory) are now dyed to that player's current color.
+
+---------------------------------------------------------------------------------------------------

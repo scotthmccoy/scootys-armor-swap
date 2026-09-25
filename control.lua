@@ -20,6 +20,22 @@ function on_init(event)
 		function()
 			Logging.sasLog("⚡️ on_init")
 			storage.armorColors = {}
+			dyeAllPlayersUndyedArmors()
+		end
+	)
+end
+
+--[[
+Run when the mod's configuration changes: when the mod is added to an existing save, updated,
+or removed, or when the game version changes. This (not on_load, which can't access game state
+or write to storage) is where existing saves get their undyed armors seeded.
+]]
+function on_configuration_changed(event)
+	tryCatchPrint(
+		function()
+			Logging.sasLog("⚡️ on_configuration_changed")
+			storage.armorColors = storage.armorColors or {}
+			dyeAllPlayersUndyedArmors()
 		end
 	)
 end
@@ -182,6 +198,66 @@ function dyePlayerFromArmor(luaPlayer)
 	Logging.sasLog("Could not find armor's color, Bailing.")
 end
 
+-- Returns true if any of the armor's keys already has a recorded color.
+function isArmorDyed(armorInfo)
+	for _, key in ipairs(armorInfo.keys) do
+		if storage.armorColors[key] ~= nil then
+			return true
+		end
+	end
+	return false
+end
+
+-- Dyes a single armor stack with the player's current color, but only if it isn't dyed yet.
+function dyeUndyedArmor(luaPlayer, luaItemStackArmor)
+	local armorInfo = getArmorInfoFromStack(luaPlayer, luaItemStackArmor)
+	if isArmorDyed(armorInfo) then
+		return
+	end
+
+	Logging.sasLog(
+		"Dyeing undyed armor "
+		.. StringUtils.toString(armorInfo.keys)
+		.. " to "
+		.. StringUtils.toString(luaPlayer.color)
+	)
+
+	for _, key in ipairs(armorInfo.keys) do
+		storage.armorColors[key] = luaPlayer.color
+	end
+end
+
+-- Dyes every undyed armor a player has (worn and in the main inventory) their player color.
+function dyeUndyedArmorsForPlayer(luaPlayer)
+	Logging.sasLog()
+
+	-- Worn armor
+	local armorInventory = luaPlayer.get_inventory(defines.inventory.character_armor)
+	if armorInventory ~= nil and armorInventory[1].valid_for_read and armorInventory[1].is_armor then
+		dyeUndyedArmor(luaPlayer, armorInventory[1])
+	end
+
+	-- Main inventory
+	local mainInventory = luaPlayer.get_main_inventory()
+	if mainInventory ~= nil then
+		for i = 1, #mainInventory do
+			local luaItemStack = mainInventory[i]
+			if luaItemStack.valid_for_read and luaItemStack.is_armor then
+				dyeUndyedArmor(luaPlayer, luaItemStack)
+			end
+		end
+	end
+end
+
+-- Seeds player colors onto every player's undyed armors. Run when the mod is loaded into a
+-- save (on_init for new games, on_configuration_changed for existing ones).
+function dyeAllPlayersUndyedArmors()
+	Logging.sasLog()
+	for _, luaPlayer in pairs(game.players) do
+		tryCatchPrint(dyeUndyedArmorsForPlayer, luaPlayer)
+	end
+end
+
 
 
 ----------------------
@@ -197,36 +273,43 @@ function getArmorInfo(luaPlayer)
 		return nil
 	end
 
+	return getArmorInfoFromStack(luaPlayer, luaItemStackWornArmor)
+end
+
+-- Computes the color-cache keys for a specific armor item stack. Used both for the worn
+-- armor (via getArmorInfo) and for armors sitting in the main inventory.
+function getArmorInfoFromStack(luaPlayer, luaItemStackArmor)
+	Logging.sasLog()
 
 	--[[
 	Item numbers are usually a very stable way of "primary key"ing an item.
-	However, some mods that teleport players like our beloved SE and Jetpack will destroy and re-create the player, which has the 
+	However, some mods that teleport players like our beloved SE and Jetpack will destroy and re-create the player, which has the
 	unfortunate side effect of creating new item numbers for that player's armors.
-	
-	So, we do 2 more increasingly fuzzy matches on 
+
+	So, we do 2 more increasingly fuzzy matches on
 
 	--]]
 
 	-- key1 is just the item_number - guaranteed to be unique, but not guaranteed to be permanent.
-	local key1 = luaItemStackWornArmor.item_number
+	local key1 = luaItemStackArmor.item_number
 
 	-- key2 is a hash of the player's name, the armor name and its grid (if it has any)
-	local hashInput = luaPlayer.name .. luaItemStackWornArmor.name
-	if luaItemStackWornArmor.grid ~= nil then
-		hashInput = hashInput .. StringUtils.toString(luaItemStackWornArmor.grid.get_contents())
+	local hashInput = luaPlayer.name .. luaItemStackArmor.name
+	if luaItemStackArmor.grid ~= nil then
+		hashInput = hashInput .. StringUtils.toString(luaItemStackArmor.grid.get_contents())
 	end
 	local key2 = StringUtils.hash(hashInput)
 
 	-- key3 is a hash of the armor name and its grid (if it has any)
-	hashInput = luaItemStackWornArmor.name
-	if luaItemStackWornArmor.grid ~= nil then
-		hashInput = hashInput .. StringUtils.toString(luaItemStackWornArmor.grid.get_contents())
+	hashInput = luaItemStackArmor.name
+	if luaItemStackArmor.grid ~= nil then
+		hashInput = hashInput .. StringUtils.toString(luaItemStackArmor.grid.get_contents())
 	end
-	local key3 = StringUtils.hash(hashInput)	
+	local key3 = StringUtils.hash(hashInput)
 
 	-- Return a table
 	local ret = {
-		name = luaItemStackWornArmor.name,
+		name = luaItemStackArmor.name,
 		keys = { key1, key2, key3 }
 	}
 
@@ -420,6 +503,7 @@ end
 -- Note - these must be added last, after the funcs are defined
 Event.addListener("on_init", on_init, true)
 Event.addListener("on_load", on_load, true)
+Event.addListener("on_configuration_changed", on_configuration_changed, true)
 Event.addListener("scootys-armor-swap-equip-next-armor", onKeyPressHandlerEquipNextArmorHandler)
 Event.addListener("scootys-armor-swap-clear-cache", onKeyPressHandlerClearCacheHandler)
 Event.addListener(defines.events.on_player_armor_inventory_changed, onPlayerArmorInventoryChangedHandler)
